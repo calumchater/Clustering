@@ -1,0 +1,254 @@
+---
+title: "Presentation"
+author: "Chater_Croce_Pery_ElOuedghiri"
+date: "16 avril 2018"
+output: pdf_document
+---
+
+
+##Chargement des packages
+```{r, echo=FALSE, results='hide'}
+library(mice)
+library(VIM)
+library(MASS)
+library(psych)
+library(ggplot2)
+library(Hmisc) 
+library(FactoMineR)
+library("factoextra")
+library(lattice)
+```
+
+# Projet Alimentation
+
+##Chargement des données
+```{r, echo=FALSE}
+rm(list=ls())
+d <-read.table("/home/gis3/acroce/Linux/GIS 4/Modélisation/Projet/food.csv",sep="\t", dec=",", header=TRUE)
+head(d)
+```
+
+###Suppression des colonnes inutiles
+```{r, echo=FALSE}
+d = d[,-1]
+#Definition du nom des lignes
+row.names(d)=d[,1]
+d = d[,-1]
+head(d)
+attach(d)
+```
+
+\newpage
+## Analyse préalable
+```{r}
+summary(d)
+```
+
+
+
+## Décision prise
+
+```{r, echo=FALSE, results='hide'}
+rm(list=ls())
+d <-read.table("/home/gis3/acroce/Linux/GIS 4/Modélisation/Projet/foodMissing.csv",sep="\t", dec=",", header=TRUE)
+d = d[,-1]
+#Definition du nom des lignes
+row.names(d)=d[,1]
+d = d[,-1]
+head(d)
+```
+On recharge les données en enlevant les valeurs aberrantes puis on transforme la variable Vitamine A en variable qualitative.
+
+```{r}
+d$Vitamin.A.levels. <- cut(d$Vitamin.A..mg., breaks=c(0,1,150,15000), include.lowest = TRUE)
+levels(d$Vitamin.A.levels.) <- c("null","medium","high")
+d <- d[,-5]
+summary(d)
+```
+\newpage
+## Imputation des valeurs manquantes
+
+###Modèle d'imputation
+```{r}
+dm=mice(d,m=1,seed=10,print=FALSE,maxit=50)
+print(dm$imp)
+```
+
+
+###Affichage du modèle d'imputation
+```{r}
+stripplot(dm,pch=20,cex=1.2)
+d1 = complete(dm,1)
+```
+
+
+## Analyse
+
+### Statistiques descriptives
+```{r}
+summary(d1)
+```
+
+\newpage
+### FAMD
+```{r, echo = FALSE}
+d1.famd = FAMD (d1, ncp = 5, sup.var = NULL, ind.sup = NULL, graph = FALSE)
+```
+
+#### Valeurs Propres
+```{r echo = FALSE}
+fviz_screeplot(d1.famd)
+d1.famd$eig
+```
+\newpage
+#### Informations sur les variables quantitatives
+```{r echo = FALSE}
+# Affichage des variables quantitatives sur le cercle de corrélation
+fviz_famd_var(d1.famd, "quanti.var", col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+d1.famd$quanti.var
+```
+  
+  
+
+#### Informations sur la variable qualitative (Vitamin A)
+```{r}
+d1.famd$quali.var
+```
+
+\newpage
+
+##### Représentation des modalités de Vitamine A sur le plan principal
+```{r echo = FALSE}
+
+fviz_famd_var(d1.famd,axes = c(1, 2),  "quali.var", col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+             )
+```
+
+\newpage
+
+##### Représentation des modalités de Vitamine A sur le plan des axes 3 et 4
+```{r echo = FALSE}
+fviz_famd_var(d1.famd,axes = c(3, 4),  "quali.var", col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+             )
+```
+
+#### Information sur les individus
+
+##### Coordonnées
+
+Voici les individus qui ont les coordonnées les plus élevées et les plus faible sur chaque axe.
+Axe 1 :  
+  + Huile végétale, Lard, graisse cuite  
+  - Blackcurrants, raw green peppers, Choux de bruxelles cru  
+
+
+Axe 2 :  
+  + Foie frit, foie mijoté, foie cru  
+  - graisse de rôti, graisse cuite, lard  
+
+
+Axe 3 :  
+  + Margarine, beurre, persil, cassis  
+  - Farine de soja, Bemax, Bacon  
+
+
+Axe 4 :  
+ + Pois cassés sec crus, ready brek, morue, cassis  
+ - Potiron cru, carottes vapeur, carottes crues  
+
+##### Qualité
+Voici les individus les mieux représentés sur chaque axe.
+
+Axe 1 :  
++ bacon frit, cachuetes grillées salées, beurre de cacahuètes, Salami  
+
+
+Axe 2 :  
++ rognons frits, rognons mijotés, coeur cru  
+
+
+Axe 3 :  
++ batonnets de poisson surgelés, plie à la vapeur, plie crue, saumon cru, cream cheese  
+
+
+Axe 4 :  
++ pois chiches crus, plantain mûre, pois crus séchés  
+
+
+##### Contribution
+Voici les individus qui contribuent le plus à chaque axe.  
+
+Axe 1 :  
++ cassis, huile végétale, Lard, graisse de cuisson  
+
+
+Axe 2 :  
++ foie frit, foie mijoté, foie cru, rognons frits  
+
+
+Axe 3 :
++ cassis, persil, beurre, margarine
+
+
+Axe 4 :
+ + cassis, oeufs de morue, ready brek, pois crus séchés
+
+
+### Classification Ascendante Hiérarchique
+
+
+```{r}
+#Realisation de la CAH
+d1.hcpc = HCPC(d1.famd, nb.clust = 4)
+
+```
+
+
+####Description par les variables
+
+```{r}
+# Indépendance des variables
+d1.hcpc$desc.var$test.chi2
+
+d1.hcpc$desc.var$category
+
+d1.hcpc$desc.var$quanti
+```
+
+#Description par les Individus
+```{r}
+
+d1.hcpc$desc.ind
+
+```
+####Description des classes
+```{r}
+d1.hcpc$desc.var$category
+x1<- d1.hcpc$desc.var$quanti$`1`
+x2<- d1.hcpc$desc.var$quanti$`2`
+x3<- d1.hcpc$desc.var$quanti$`3`
+x4<- d1.hcpc$desc.var$quanti$`4`
+
+y1<- d1.hcpc$desc.var$category$`1`
+y2<- d1.hcpc$desc.var$category$`2`
+y3<- d1.hcpc$desc.var$category$`3`
+y4<- d1.hcpc$desc.var$category$`4`
+
+#Affichage des histogrammes
+par(mfrow=c(2,2))
+barplot(x1[,1], col=ifelse(x1>0,'green','red'), names.arg=row.names(x1[,0]), las=2, main='Histogramme des valeurs test de c1')
+barplot(y1[,5], col=ifelse(y1>0,'green','red'), names.arg=row.names(y1[,0]), las=2, main='Histogramme des valeurs test de c1')
+barplot(x2[,1], col=ifelse(x2>0,'green','red'), names.arg=row.names(x2[,0]), las=2, main='Histogramme des valeurs test de c2')
+barplot(y2[,5], col=ifelse(y2>0,'green','red'), names.arg=row.names(y2[,0]), las=2, main='Histogramme des valeurs test de c2')
+barplot(x3[,1], col=ifelse(x3>0,'green','red'), names.arg=row.names(x3[,0]), las=2, main='Histogramme des valeurs test de c3')
+barplot(y3[,5], col=ifelse(y3>0,'green','red'), names.arg=row.names(y3[,0]), las=2, main='Histogramme des valeurs test de c3')
+barplot(x4[,1], col=ifelse(x4>0,'green','red'), names.arg=row.names(x4[,0]), las=2, main='Histogramme des valeurs test de c4')
+barplot(y4[,5], col=ifelse(y4>0,'green','red'), names.arg=row.names(y4[,0]), las=2, main='Histogramme des valeurs test de c4')
+```
+
+
+
